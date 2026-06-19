@@ -1,0 +1,6 @@
+build/
+*.csv
+*.o
+*.a
+.omc/
+.DS_Store
