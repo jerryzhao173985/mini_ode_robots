@@ -19,7 +19,11 @@ Substance   intuitive material (roughness/slip/hardness/elasticity) -> ODE surfa
             spring-damper law; presets + anisotropic friction
 Simulation  ODE lifecycle + the canonical loop: dSpaceCollide -> nearCallback -> dWorldStep -> dJointGroupEmpty
 OdeRobot    a bag of Primitives+Joints + aggregating sensor/motor I/O (addSensor/addMotor)
-servo/PID, AngularMotor (dAMotor), obstacles, Logger    reusable control + observability layer
+servo/PID, AngularMotor (dAMotor), obstacles, HeightField (terrain), Logger   control + scene + observability
+  - HeightField wraps ODE dCreateHeightfield as a static Primitive. ODE height runs along LOCAL Y,
+    so for our Z-up world it is placeable + rotated +90 deg about X (local Y->world Z, local Z->world -Y);
+    a world (X,Y) therefore samples local (X,-Y). The dHeightfieldDataID outlives the geom (destroyed
+    geom-first). Verified: a hexapod rests on it identically to a plane, and walks ~2.8 m across bumps.
 servos      OneAxisServo(Vel) (1-DOF), TwoAxisServoVel (2-DOF hip), AngularMotor (3-DOF / ball joint)
 sensors     RaySensor, JointSensor, ForceTorqueSensor, SpeedSensor, AxisOrientationSensor, ContactSensor
 robots/     Nimm4 (wheeled), Arm (servo chain), Snake (anisotropic friction), Hexapod (6-leg tripod walker)

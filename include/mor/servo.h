@@ -160,7 +160,7 @@ public:
   TwoAxisServoVel(TwoAxisJoint* joint, double min1, double max1, double min2, double max2,
                   double power, double maxVel = 12.0, double jointLimit = 1.3)
     : joint(joint), min1(min1), max1(max1), min2(min2), max2(max2),
-      pid1(maxVel/2, 0, 0), pid2(maxVel/2, 0, 0), power(power), jointLimit(jointLimit) {
+      pid1(maxVel/2, 0, 0), pid2(maxVel/2, 0, 0), power(power) {
     assert(joint && min1 < max1 && min2 < max2 && power >= 0);
     joint->setParam(dParamLoStop,  min1 - std::fabs(min1)*(jointLimit-1));
     joint->setParam(dParamHiStop,  max1 + std::fabs(max1)*(jointLimit-1));
@@ -190,7 +190,7 @@ private:
   TwoAxisJoint* joint;
   double min1,max1,min2,max2;
   PID pid1, pid2;
-  double power, jointLimit;
+  double power;
   double t1=0, t2=0;
 };
 

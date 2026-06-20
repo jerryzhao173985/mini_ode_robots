@@ -44,6 +44,7 @@ Six headless, self-checking programs (no window, no GPU):
 | `build/demo_snake` | the `Snake` crawls forward from undulation + anisotropic friction (≈7 m); logs a CSV |
 | `build/demo_sensors` | composable I/O: a stock `Nimm4` with an attached ray + joint sensor (`addSensor`) |
 | `build/demo_hexapod` | the 6-legged `Hexapod` walks via a tripod gait (≈3 m); logs a CSV |
+| `build/demo_terrain` | the `Hexapod` walks across rough `HeightField` terrain (≈2.8 m), staying upright |
 
 All exit `0` on success and print per-check `PASS`/`FAIL`. The assertions use tolerant thresholds
 (e.g. "snake travels > 0.1 m", "low-friction slide > 1.5× the high-friction one") so they hold
@@ -56,6 +57,7 @@ anisotropic box slides ≈8.5 m vs ≈0.07 m (≈127×); snake travels ≈7.5 m;
 
 ```
 include/mor/          the engine (≈ the lpzrobots ode_robots core, OSG/selforg removed)
+  mor.h               umbrella header — #include this for the whole engine
   osg_compat.h        Vec3/Vec4/Quat/Matrix — replaces OpenSceneGraph (row-vector convention)
   pose_types.h        Pos / Axis / Pose + the ODE<->matrix bridge (poseFromOde / odeRotation)
   globaldata.h        OdeConfig — the tunable physics "tokens" (timestep, gravity, ERP/CFM)
@@ -71,12 +73,13 @@ include/mor/          the engine (≈ the lpzrobots ode_robots core, OSG/selforg
   contactsensor.h     binary touch sensor (foot-ground contact) via a Substance callback
   angularmotor.h      AngularMotor (ODE dAMotor): actively drive ball joints / 3-DOF axes
   obstacles.h         Playground (static walls) + passive box/sphere helpers
+  heightfield.h       rough-terrain ground (ODE dCreateHeightfield) as a static Primitive
   logger.h            minimal header-only CSV logger for headless experiments
   simulation.h        ODE lifecycle + collision near-callback + the canonical step loop
   oderobot.h          robot base: primitives+joints + aggregating getSensors/setMotors + addSensor/addMotor
 src/                  the implementations
 robots/               nimm4 (wheeled), arm (servo chain), snake (anisotropic friction), hexapod (legged)
-examples/             test_math, selfcheck, test_features, demo_robot, demo_arm, demo_snake, demo_sensors, demo_hexapod
+examples/             test_math, selfcheck, test_features, demo_robot, demo_arm, demo_snake, demo_sensors, demo_hexapod, demo_terrain
 ```
 
 **To build your own robot, read [`BUILDING_ROBOTS.md`](BUILDING_ROBOTS.md)** — the practical
@@ -106,8 +109,7 @@ extension guide (construction recipe, servos, composable sensors/motors, gotchas
 ## A minimal program
 
 ```cpp
-#include "mor/simulation.h"
-#include "mor/primitive.h"
+#include "mor/mor.h"        // umbrella header — the whole engine (or include the few you need)
 using namespace mor;
 
 int main() {
