@@ -24,6 +24,13 @@ struct OdeConfig {
   int    quickStepIters= 20;    ///< iterations for QuickStep
   double cfm           = 1e-6;  ///< global constraint force mixing (soft global)
   double erp           = 0.2;   ///< global error reduction parameter
+  // contactSurfaceLayer is OPT-IN (default 0). lpzrobots sets ~0.001, but our soft-contact
+  // Substance model (dContactSoftERP/CFM) already gives jitter-free resting, and a nonzero
+  // layer measurably destabilizes perfectly-aligned stacks under direct dWorldStep (the LCP
+  // 's<=0' singularity) without reducing jitter. Raise it only for hard/explicit contacts,
+  // and prefer useQuickStep then.
+  double contactSurfaceLayer     = 0.0;   ///< allowed penetration before push-out (opt-in)
+  double contactMaxCorrectingVel = 100.0; ///< cap on contact recovery speed (prevents explosive push-out); safe default
   bool   autoDisable   = true;  ///< let resting bodies sleep (good for debris/stacks). Set false
                                 ///< for free-spin / energy-conservation experiments so a coasting
                                 ///< body is not frozen. (Robots disable this per-body regardless.)

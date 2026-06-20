@@ -65,7 +65,10 @@ include/mor/          the engine (≈ the lpzrobots ode_robots core, OSG/selforg
   pid.h / servo.h     PID + OneAxisServo(Vel): position control for a hinge/slider joint
   sensor.h / motor.h  attachable Sensor/Motor interfaces (composable robot I/O)
   raysensor.h         distance/IR sensor (Ray + Transform + Substance callback) — a Sensor
-  jointsensor.h       proprioceptive Sensor: joint angle (+rate)
+  jointsensor.h       proprioceptive Sensors: JointSensor (angle/rate) + ForceTorqueSensor (joint load)
+  bodysensors.h       SpeedSensor (velocity) + AxisOrientationSensor (up-vector/tilt, for balance)
+  contactsensor.h     binary touch sensor (foot-ground contact) via a Substance callback
+  angularmotor.h      AngularMotor (ODE dAMotor): actively drive ball joints / 3-DOF axes
   obstacles.h         Playground (static walls) + passive box/sphere helpers
   logger.h            minimal header-only CSV logger for headless experiments
   simulation.h        ODE lifecycle + collision near-callback + the canonical step loop

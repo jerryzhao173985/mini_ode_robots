@@ -29,6 +29,10 @@ void Simulation::init(){
                           globalData.odeConfig.gravity);
   dWorldSetCFM(world, globalData.odeConfig.cfm);
   dWorldSetERP(world, globalData.odeConfig.erp);
+  // contact-stability knobs (cf. lpzrobots simulation.cpp:225-226): cap correcting velocity
+  // (safe default) and apply the opt-in surface layer (default 0 — see globaldata.h for why).
+  dWorldSetContactMaxCorrectingVel(world, globalData.odeConfig.contactMaxCorrectingVel);
+  dWorldSetContactSurfaceLayer(world, globalData.odeConfig.contactSurfaceLayer);
   dWorldSetAutoDisableFlag(world, globalData.odeConfig.autoDisable ? 1 : 0);  // resting bodies sleep
   dWorldSetQuickStepNumIterations(world, globalData.odeConfig.quickStepIters);
   globalData.time = 0.0;

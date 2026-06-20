@@ -91,6 +91,12 @@ addMotor (new OneAxisServoVel(hj, -1,1, 20));     // appends 1 command channel
 Both compose: a robot can have `*Intern` channels *and* attached sensors/motors;
 `getSensorNumber()` is the sum. See `examples/demo_sensors.cpp`.
 
+Ready-made parts to attach:
+- Sensors: `RaySensor` (distance), `JointSensor` (angle/rate), `ForceTorqueSensor` (joint load),
+  `SpeedSensor` (velocity), `AxisOrientationSensor` (up-vector/tilt — balance), `ContactSensor` (touch).
+- Motors: `OneAxisServoVel`/`OneAxisServo` (1-DOF joint), `AngularMotor` (ODE `dAMotor`: actively
+  drive a ball joint or 3-DOF Euler axes — what the built-in joint motors can't do).
+
 ---
 
 ## 4. Running and recording

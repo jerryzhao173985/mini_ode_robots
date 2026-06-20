@@ -9,6 +9,10 @@
 #include "mor/joint.h"
 #include "mor/raysensor.h"
 #include "mor/servo.h"
+#include "mor/bodysensors.h"
+#include "mor/jointsensor.h"
+#include "mor/contactsensor.h"
+#include "mor/angularmotor.h"
 #include <cstdio>
 #include <cmath>
 
@@ -237,6 +241,96 @@ static void test_subspaces(){
   check(ignored  == 0, "ignore_inside=true sub-space suppresses internal collisions");
 }
 
+/* 9) Proprioceptive sensors (Speed / AxisOrientation / ForceTorque / Contact). */
+static void test_proprioception(){
+  std::printf("[9] proprioceptive sensors\n");
+  { // AxisOrientationSensor: up-axis is (0,0,1) upright, tilts to (1,0,0) at 90deg about Y
+    Simulation sim; sim.init(); sim.setGravity(0);
+    Box b(0.2,0.2,0.2); b.init(sim.getOdeHandle(),1); b.setPosition(Pos(0,0,1));
+    AxisOrientationSensor up(&b);
+    double s[3]; up.get(s,3);
+    check(std::fabs(s[2]-1.0) < 1e-6, "AxisOrientationSensor up-axis = (0,0,1) when upright");
+    b.setPose(Pose::rotate(M_PI/2, Vec3(0,1,0)) * Pose::translate(0,0,1));
+    up.get(s,3);
+    check(std::fabs(s[0]-1.0) < 1e-3, "up-axis tilts to ~(1,0,0) when rotated 90deg about Y");
+  }
+  { // SpeedSensor reads body velocity
+    Simulation sim; sim.init(); sim.setGravity(0);
+    Sphere b(0.2); b.init(sim.getOdeHandle(),1); b.setPosition(Pos(0,0,1));
+    dBodySetLinearVel(b.getBody(), 1.5, 0, 0);
+    SpeedSensor sp(&b); double s[3]; sp.get(s,3);
+    check(std::fabs(s[0]-1.5) < 1e-6, "SpeedSensor reads body linear velocity");
+  }
+  { // ForceTorqueSensor: a hinge holding a mass under gravity carries torque
+    Simulation sim; sim.init(); sim.setGravity(-9.81);
+    Box anchor(0.1,0.1,0.1); anchor.init(sim.getOdeHandle(),1,Primitive::Body);
+    anchor.setPosition(Pos(0,0,2)); dBodySetKinematic(anchor.getBody());
+    Sphere bob(0.2); bob.init(sim.getOdeHandle(),1); bob.setPosition(Pos(0.6,0,2));
+    HingeJoint hj(&bob,&anchor,Pos(0,0,2),Axis(0,1,0)); hj.init(sim.getOdeHandle());
+    ForceTorqueSensor ft(&hj);
+    for(int i=0;i<10;i++) sim.step();
+    double s[3]; ft.get(s,3);
+    double tmag = std::sqrt(s[0]*s[0]+s[1]*s[1]+s[2]*s[2]);
+    check(tmag > 1e-3, "ForceTorqueSensor reports nonzero joint torque under load");
+  }
+  { // ContactSensor: 1 when resting on ground, 0 in the air
+    Simulation sim; sim.init();
+    Plane g; g.init(sim.getOdeHandle(),0);
+    Box rest(0.4,0.4,0.4); rest.init(sim.getOdeHandle(),1); rest.setPosition(Pos(0,0,0.2));
+    Box air(0.2,0.2,0.2);  air.init(sim.getOdeHandle(),1);  air.setPosition(Pos(6,6,6));
+    ContactSensor cs(&rest), ca(&air);
+    for(int i=0;i<80;i++){ sim.step(); cs.sense(sim.getGlobalData()); ca.sense(sim.getGlobalData()); }
+    double a[1], r[1]; cs.get(r,1); ca.get(a,1);
+    check(r[0] > 0.5, "ContactSensor = 1 when the box rests on the ground");
+    check(a[0] < 0.5, "ContactSensor = 0 for a body in the air");
+  }
+}
+
+/* 10) AngularMotor: actively drive a free body about an axis, and a BALL joint (3-DOF). */
+static void test_angularmotor(){
+  std::printf("[10] AngularMotor (active multi-axis drive)\n");
+  { // free body driven about global Z to a commanded angular velocity
+    Simulation sim; sim.init(); sim.setGravity(0);
+    Box b(0.3,0.3,0.3); b.init(sim.getOdeHandle(),1); b.setPosition(Pos(0,0,1));
+    AngularMotor am(sim.getOdeHandle(), &b, nullptr, { Axis(0,0,1) }, /*power*/5.0, /*maxVel*/8.0, /*global*/0);
+    double cmd[1]={1.0}; am.set(cmd,1);
+    for(int i=0;i<150;i++){ am.act(sim.getGlobalData()); sim.step(); }
+    Pos w = b.getAngularVel();
+    std::printf("    free body wz=%.3f (target 8.0), wx=%.3f wy=%.3f\n", w.z(), w.x(), w.y());
+    check(std::fabs(w.z()-8.0) < 1.0, "drives a free body to commanded angular velocity about Z");
+    check(std::fabs(w.x())<0.5 && std::fabs(w.y())<0.5, "no spurious rotation on the other axes");
+  }
+  { // a BALL joint actively rotated about Y — impossible with the joint's own (absent) motor
+    Simulation sim; sim.init(); sim.setGravity(0);
+    Box anchor(0.1,0.1,0.1); anchor.init(sim.getOdeHandle(),1,Primitive::Body);
+    anchor.setPosition(Pos(2,0,1)); dBodySetKinematic(anchor.getBody());
+    Sphere bob(0.15); bob.init(sim.getOdeHandle(),1); bob.setPosition(Pos(2,0,1));
+    BallJoint bj(&bob,&anchor,Pos(2,0,1)); bj.init(sim.getOdeHandle());
+    AngularMotor am3(sim.getOdeHandle(), &bob, &anchor,
+                     { Axis(1,0,0), Axis(0,1,0), Axis(0,0,1) }, 5.0, 6.0, /*global*/0);
+    double c3[3]={0,1.0,0}; am3.set(c3,3);
+    for(int i=0;i<150;i++){ am3.act(sim.getGlobalData()); sim.step(); }
+    Pos w = bob.getAngularVel();
+    std::printf("    ball-joint wy=%.3f (driven), wx=%.3f wz=%.3f (held)\n", w.y(), w.x(), w.z());
+    check(std::fabs(w.y()) > 2.0, "AngularMotor actively drives a BALL joint about a chosen axis (3-DOF)");
+    check(std::fabs(w.x())<1.0 && std::fabs(w.z())<1.0, "the other two ball-joint axes are held near zero");
+  }
+}
+
+/* 11) Contact stability: soft-contact materials + maxCorrectingVel keep a resting box
+      jitter-free (the surface layer is intentionally off by default — see globaldata.h). */
+static void test_contact_stability(){
+  std::printf("[11] contact stability (soft contacts + maxCorrectingVel)\n");
+  Simulation sim; sim.init();
+  Plane g; g.init(sim.getOdeHandle(),0);
+  Box box(0.5,0.5,0.5); box.init(sim.getOdeHandle(),5.0); box.setPosition(Pos(0,0,0.25));
+  for(int i=0;i<200;i++) sim.step();                 // settle
+  double mn=1e9, mx=-1e9;
+  for(int i=0;i<100;i++){ sim.step(); double z=box.getPosition().z(); mn=std::min(mn,z); mx=std::max(mx,z); }
+  std::printf("    resting z jitter = %.2e m\n", mx-mn);
+  check(mx-mn < 1e-3, "resting box has negligible vertical jitter (stable contact)");
+}
+
 int main(){
   test_transform();
   test_ray();
@@ -246,6 +340,9 @@ int main(){
   test_servo_convergence();
   test_transform_mass_policy();
   test_subspaces();
+  test_proprioception();
+  test_angularmotor();
+  test_contact_stability();
   std::printf("\nFEATURE TESTS: %s\n", failures==0 ? "ALL PASS" : "FAILURES PRESENT");
   return failures==0 ? 0 : 1;
 }

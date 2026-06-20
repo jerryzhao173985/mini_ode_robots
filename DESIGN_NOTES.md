@@ -19,7 +19,8 @@ Substance   intuitive material (roughness/slip/hardness/elasticity) -> ODE surfa
             spring-damper law; presets + anisotropic friction
 Simulation  ODE lifecycle + the canonical loop: dSpaceCollide -> nearCallback -> dWorldStep -> dJointGroupEmpty
 OdeRobot    a bag of Primitives+Joints + aggregating sensor/motor I/O (addSensor/addMotor)
-servo/PID, RaySensor, JointSensor, obstacles, Logger   the reusable control/sensing/observability layer
+servo/PID, AngularMotor (dAMotor), obstacles, Logger    reusable control + observability layer
+sensors     RaySensor, JointSensor, ForceTorqueSensor, SpeedSensor, AxisOrientationSensor, ContactSensor
 robots/     Nimm4 (differential drive), Arm (servo chain), Snake (anisotropic-friction undulation)
 ```
 
@@ -39,6 +40,13 @@ robots/     Nimm4 (differential drive), Arm (servo chain), Snake (anisotropic-fr
   `addSensor(...)` without rewriting its interface.
 - **Guards on ODE's sharp edges:** parallel Universal/Hinge2 axes (would abort ODE), wrong-order
   teardown vs `dCloseODE` (lifetime guard), nested Transforms, and real-pointer ignored-pair keys.
+- **Contact surface layer is opt-in (default 0).** lpzrobots sets ~0.001, but measurement showed
+  that with our soft-contact `Substance` model resting is already jitter-free, the layer slightly
+  *increases* penetration, and it destabilizes perfectly-aligned stacks under direct `dWorldStep`
+  (the LCP `s<=0` singularity). We keep the harmless `maxCorrectingVel` cap and leave the layer off.
+- **Composable sensing/actuation:** `OdeRobot` aggregates its own channels with attached
+  `Sensor`/`Motor` objects (`addSensor`/`addMotor`) — ray/joint/force/speed/orientation/contact
+  sensing and `AngularMotor` (active ball-joint / 3-DOF control) plug in without rewriting a robot.
 - **Math layer** reproduces OpenSceneGraph's row-vector convention (`v·M`, w-first quaternions) so the
   ODE↔matrix bridge is correct — validated by round-tripping a pose through ODE itself.
 
