@@ -37,7 +37,7 @@ endif()
 
 # --- examples + tests ---
 enable_testing()
-foreach(ex test_math selfcheck test_features demo_robot demo_arm demo_snake demo_sensors)
+foreach(ex test_math selfcheck test_features demo_robot demo_arm demo_snake demo_sensors demo_hexapod)
   add_executable(${ex} examples/${ex}.cpp)
   target_link_libraries(${ex} PRIVATE mor)
   add_test(NAME ${ex} COMMAND ${ex})

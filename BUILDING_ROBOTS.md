@@ -94,8 +94,9 @@ Both compose: a robot can have `*Intern` channels *and* attached sensors/motors;
 Ready-made parts to attach:
 - Sensors: `RaySensor` (distance), `JointSensor` (angle/rate), `ForceTorqueSensor` (joint load),
   `SpeedSensor` (velocity), `AxisOrientationSensor` (up-vector/tilt — balance), `ContactSensor` (touch).
-- Motors: `OneAxisServoVel`/`OneAxisServo` (1-DOF joint), `AngularMotor` (ODE `dAMotor`: actively
-  drive a ball joint or 3-DOF Euler axes — what the built-in joint motors can't do).
+- Motors: `OneAxisServoVel`/`OneAxisServo` (1-DOF joint), `TwoAxisServoVel` (2-DOF universal joint,
+  e.g. a hexapod hip), `AngularMotor` (ODE `dAMotor`: actively drive a ball joint or 3-DOF Euler axes
+  — what the built-in joint motors can't do).
 
 ---
 
@@ -167,4 +168,5 @@ private:
 ```
 
 That's the entire surface area: parts, one joint, one servo, four I/O hooks. Copy `robots/nimm4.*`
-(wheeled), `robots/arm.*` (servo chain), or `robots/snake.*` (anisotropic friction) as starting points.
+(wheeled), `robots/arm.*` (servo chain), `robots/snake.*` (anisotropic friction), or `robots/hexapod.*`
+(legged: 2-DOF universal hips + foot contact sensors + tripod gait) as starting points.

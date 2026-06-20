@@ -20,7 +20,7 @@ SRC   := $(wildcard src/*.cpp) $(wildcard robots/*.cpp)
 OBJ   := $(patsubst %.cpp,build/%.o,$(notdir $(SRC)))
 LIB   := build/libmor.a
 
-EXAMPLES := test_math selfcheck test_features demo_robot demo_arm demo_snake demo_sensors
+EXAMPLES := test_math selfcheck test_features demo_robot demo_arm demo_snake demo_sensors demo_hexapod
 BINS     := $(addprefix build/,$(EXAMPLES))
 
 VPATH := src:robots:examples
@@ -48,6 +48,7 @@ test: all
 	@echo "==== servo arm demo ===="          && ./build/demo_arm
 	@echo "==== anisotropic snake demo ===="  && ./build/demo_snake
 	@echo "==== composable sensors demo ===="  && ./build/demo_sensors
+	@echo "==== hexapod tripod-gait demo ===="  && ./build/demo_hexapod
 
 clean:
 	rm -rf build

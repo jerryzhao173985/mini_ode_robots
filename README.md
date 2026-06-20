@@ -43,6 +43,7 @@ Six headless, self-checking programs (no window, no GPU):
 | `build/demo_arm` | the servo `Arm` tracks position commands (tip moves, joint sign follows command) |
 | `build/demo_snake` | the `Snake` crawls forward from undulation + anisotropic friction (≈7 m); logs a CSV |
 | `build/demo_sensors` | composable I/O: a stock `Nimm4` with an attached ray + joint sensor (`addSensor`) |
+| `build/demo_hexapod` | the 6-legged `Hexapod` walks via a tripod gait (≈3 m); logs a CSV |
 
 All exit `0` on success and print per-check `PASS`/`FAIL`. The assertions use tolerant thresholds
 (e.g. "snake travels > 0.1 m", "low-friction slide > 1.5× the high-friction one") so they hold
@@ -62,7 +63,7 @@ include/mor/          the engine (≈ the lpzrobots ode_robots core, OSG/selforg
   substance.h         the material model (roughness/slip/hardness/elasticity -> ODE surface)
   primitive.h         Box/Sphere/Capsule/Cylinder/Plane/Ray/Transform (body+geom)
   joint.h             Fixed/Hinge/Hinge2/Universal/Ball/Slider (+ motors, feedback)
-  pid.h / servo.h     PID + OneAxisServo(Vel): position control for a hinge/slider joint
+  pid.h / servo.h     PID + OneAxisServo(Vel)/TwoAxisServoVel: 1- & 2-axis joint position control
   sensor.h / motor.h  attachable Sensor/Motor interfaces (composable robot I/O)
   raysensor.h         distance/IR sensor (Ray + Transform + Substance callback) — a Sensor
   jointsensor.h       proprioceptive Sensors: JointSensor (angle/rate) + ForceTorqueSensor (joint load)
@@ -74,8 +75,8 @@ include/mor/          the engine (≈ the lpzrobots ode_robots core, OSG/selforg
   simulation.h        ODE lifecycle + collision near-callback + the canonical step loop
   oderobot.h          robot base: primitives+joints + aggregating getSensors/setMotors + addSensor/addMotor
 src/                  the implementations
-robots/               nimm4 (differential drive), arm (servo chain), snake (anisotropic friction)
-examples/             test_math, selfcheck, test_features, demo_robot, demo_arm, demo_snake, demo_sensors
+robots/               nimm4 (wheeled), arm (servo chain), snake (anisotropic friction), hexapod (legged)
+examples/             test_math, selfcheck, test_features, demo_robot, demo_arm, demo_snake, demo_sensors, demo_hexapod
 ```
 
 **To build your own robot, read [`BUILDING_ROBOTS.md`](BUILDING_ROBOTS.md)** — the practical

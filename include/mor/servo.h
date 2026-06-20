@@ -152,5 +152,47 @@ protected:
 
 typedef OneAxisServoVel HingeServoVel;
 
+/** Velocity servo for a TWO-axis joint (UniversalJoint) — position control of both
+ * axes via their implicit motors (dParamVel/Vel2 + FMax/FMax2). This is what a hexapod
+ * hip needs (lift + swing), and what lpzrobots' TwoAxisServoVel provides. */
+class TwoAxisServoVel : public Motor {
+public:
+  TwoAxisServoVel(TwoAxisJoint* joint, double min1, double max1, double min2, double max2,
+                  double power, double maxVel = 12.0, double jointLimit = 1.3)
+    : joint(joint), min1(min1), max1(max1), min2(min2), max2(max2),
+      pid1(maxVel/2, 0, 0), pid2(maxVel/2, 0, 0), power(power), jointLimit(jointLimit) {
+    assert(joint && min1 < max1 && min2 < max2 && power >= 0);
+    joint->setParam(dParamLoStop,  min1 - std::fabs(min1)*(jointLimit-1));
+    joint->setParam(dParamHiStop,  max1 + std::fabs(max1)*(jointLimit-1));
+    joint->setParam(dParamLoStop2, min2 - std::fabs(min2)*(jointLimit-1));
+    joint->setParam(dParamHiStop2, max2 + std::fabs(max2)*(jointLimit-1));
+  }
+  /// command both axes, each in [-1,1] (centered-scaled into [min,max])
+  void set(double p1, double p2){
+    t1 = std::max(-1.0,std::min(1.0,p1)); t2 = std::max(-1.0,std::min(1.0,p2));
+  }
+  double get1() const { return 2*(joint->getPosition1()-min1)/(max1-min1)-1; }
+  double get2() const { return 2*(joint->getPosition2()-min2)/(max2-min2)-1; }
+
+  /* --- Motor interface --- */
+  int  getMotorNumber() const override { return 2; }
+  void set(const double* m, int n) override { if(n>0) set(m[0], n>1?m[1]:t2); }
+  void act(const GlobalData&) override {
+    double time = joint->odeHandle.getTime();
+    pid1.setTargetPosition((t1+1)*(max1-min1)/2+min1);
+    joint->setParam(dParamVel,  pid1.stepVelocity(joint->getPosition1(), time));
+    joint->setParam(dParamFMax, power);
+    pid2.setTargetPosition((t2+1)*(max2-min2)/2+min2);
+    joint->setParam(dParamVel2,  pid2.stepVelocity(joint->getPosition2(), time));
+    joint->setParam(dParamFMax2, power);
+  }
+private:
+  TwoAxisJoint* joint;
+  double min1,max1,min2,max2;
+  PID pid1, pid2;
+  double power, jointLimit;
+  double t1=0, t2=0;
+};
+
 } // namespace mor
 #endif

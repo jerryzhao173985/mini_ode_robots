@@ -331,6 +331,22 @@ static void test_contact_stability(){
   check(mx-mn < 1e-3, "resting box has negligible vertical jitter (stable contact)");
 }
 
+/* 12) TwoAxisServoVel: independent position control of BOTH universal-joint axes. */
+static void test_twoaxis_servo(){
+  std::printf("[12] TwoAxisServoVel (2-axis position control)\n");
+  Simulation sim; sim.init(); sim.setGravity(0);
+  Box base(0.1,0.1,0.1); base.init(sim.getOdeHandle(),1,Primitive::Body);
+  base.setPosition(Pos(0,0,1)); dBodySetKinematic(base.getBody());
+  Sphere bob(0.1); bob.init(sim.getOdeHandle(),1); bob.setPosition(Pos(0.5,0,1));
+  UniversalJoint uj(&bob,&base,Pos(0,0,1),Axis(1,0,0),Axis(0,0,1)); uj.init(sim.getOdeHandle());
+  TwoAxisServoVel servo(&uj, -1.0,1.0, -1.0,1.0, /*power*/60, /*maxVel*/12);
+  for(int i=0;i<2500;i++){ servo.set(0.5,-0.5); servo.act(sim.getGlobalData()); sim.step(); }
+  double a1=uj.getPosition1(), a2=uj.getPosition2();
+  std::printf("    axis1=%.3f (target 0.5) axis2=%.3f (target -0.5)\n", a1, a2);
+  check(std::fabs(a1-0.5)  < 0.03, "TwoAxisServoVel settles axis1 to commanded angle");
+  check(std::fabs(a2+0.5)  < 0.03, "TwoAxisServoVel settles axis2 to commanded angle");
+}
+
 int main(){
   test_transform();
   test_ray();
@@ -343,6 +359,7 @@ int main(){
   test_proprioception();
   test_angularmotor();
   test_contact_stability();
+  test_twoaxis_servo();
   std::printf("\nFEATURE TESTS: %s\n", failures==0 ? "ALL PASS" : "FAILURES PRESENT");
   return failures==0 ? 0 : 1;
 }

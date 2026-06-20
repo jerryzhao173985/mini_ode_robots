@@ -20,8 +20,9 @@ Substance   intuitive material (roughness/slip/hardness/elasticity) -> ODE surfa
 Simulation  ODE lifecycle + the canonical loop: dSpaceCollide -> nearCallback -> dWorldStep -> dJointGroupEmpty
 OdeRobot    a bag of Primitives+Joints + aggregating sensor/motor I/O (addSensor/addMotor)
 servo/PID, AngularMotor (dAMotor), obstacles, Logger    reusable control + observability layer
+servos      OneAxisServo(Vel) (1-DOF), TwoAxisServoVel (2-DOF hip), AngularMotor (3-DOF / ball joint)
 sensors     RaySensor, JointSensor, ForceTorqueSensor, SpeedSensor, AxisOrientationSensor, ContactSensor
-robots/     Nimm4 (differential drive), Arm (servo chain), Snake (anisotropic-friction undulation)
+robots/     Nimm4 (wheeled), Arm (servo chain), Snake (anisotropic friction), Hexapod (6-leg tripod walker)
 ```
 
 ## Key engineering decisions (and why)
