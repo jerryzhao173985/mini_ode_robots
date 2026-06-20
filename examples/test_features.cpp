@@ -340,7 +340,7 @@ static void test_twoaxis_servo(){
   Sphere bob(0.1); bob.init(sim.getOdeHandle(),1); bob.setPosition(Pos(0.5,0,1));
   UniversalJoint uj(&bob,&base,Pos(0,0,1),Axis(1,0,0),Axis(0,0,1)); uj.init(sim.getOdeHandle());
   TwoAxisServoVel servo(&uj, -1.0,1.0, -1.0,1.0, /*power*/60, /*maxVel*/12);
-  for(int i=0;i<2500;i++){ servo.set(0.5,-0.5); servo.act(sim.getGlobalData()); sim.step(); }
+  for(int i=0;i<2500;i++){ servo.set(0.5,-0.5); sim.step(); }   // set() applies both axes
   double a1=uj.getPosition1(), a2=uj.getPosition2();
   std::printf("    axis1=%.3f (target 0.5) axis2=%.3f (target -0.5)\n", a1, a2);
   check(std::fabs(a1-0.5)  < 0.03, "TwoAxisServoVel settles axis1 to commanded angle");

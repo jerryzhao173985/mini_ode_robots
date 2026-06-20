@@ -54,9 +54,9 @@ void Arm::doInternalStuffIntern(GlobalData&){
   for (int i=0;i<nSeg;i++) servos[i].set(targets[i]);
 }
 
-int Arm::getSensorsIntern(double* sensors, int n){
+int Arm::getSensorsIntern(double* sensors, int n) const {
   int m = 0;
-  for (int i=0;i<nSeg && i<n;i++) sensors[m++] = servos[i].get();
+  for (int i=0;i<nSeg && i<n;i++) sensors[m++] = servos[i].getPos();
   return m;
 }
 

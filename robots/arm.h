@@ -20,9 +20,9 @@ class Arm : public OdeRobot {
 public:
   Arm(const OdeHandle& odeHandle, int numSegments = 3, const std::string& name = "Arm");
 
-  int  getSensorNumberIntern() override { return nSeg; }
-  int  getMotorNumberIntern()  override { return nSeg; }
-  int  getSensorsIntern(double* sensors, int n) override;
+  int  getSensorNumberIntern() const override { return nSeg; }
+  int  getMotorNumberIntern()  const override { return nSeg; }
+  int  getSensorsIntern(double* sensors, int n) const override;
   void setMotorsIntern(const double* motors, int n) override;
   void doInternalStuffIntern(GlobalData& g) override;   // re-applies the servos each step
 

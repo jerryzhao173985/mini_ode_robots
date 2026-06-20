@@ -56,7 +56,7 @@ void Nimm4::setMotorsIntern(const double* motors, int n){
   static_cast<OneAxisJoint*>(joints[3])->setParam(dParamVel, rightCmd * maxSpeed);
 }
 
-int Nimm4::getSensorsIntern(double* sensors, int n){
+int Nimm4::getSensorsIntern(double* sensors, int n) const {
   if (n < 2) return 0;
   auto rate = [&](int j){ return static_cast<OneAxisJoint*>(joints[j])->getPosition1Rate(); };
   sensors[0] = 0.5 * (rate(0) + rate(2));   // average left wheel speed

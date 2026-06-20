@@ -61,16 +61,15 @@ void Hexapod::setMotorsIntern(const double* m, int n){
 
 void Hexapod::doInternalStuffIntern(GlobalData& g){
   for (int n = 0; n < NLEG; n++){
-    hips[n].set(target[2*n], target[2*n+1]);   // [lift, swing]
-    hips[n].act(g);
+    hips[n].set(target[2*n], target[2*n+1]);   // [lift, swing] — set() applies this step
   }
 }
 
-int Hexapod::getSensorsIntern(double* s, int n){
+int Hexapod::getSensorsIntern(double* s, int n) const {
   int w = 0;
   for (int i = 0; i < NLEG && w < n; i++){
-    if (w < n) s[w++] = hips[i].get1();   // lift angle
-    if (w < n) s[w++] = hips[i].get2();   // swing angle
+    if (w < n) s[w++] = hips[i].getPos1();   // lift angle
+    if (w < n) s[w++] = hips[i].getPos2();   // swing angle
   }
   return w;
 }

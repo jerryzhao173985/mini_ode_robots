@@ -55,9 +55,9 @@ void Snake::doInternalStuffIntern(GlobalData&){
   for (size_t i=0;i<servos.size();i++) servos[i].set(targets[i]);
 }
 
-int Snake::getSensorsIntern(double* sensors, int n){
+int Snake::getSensorsIntern(double* sensors, int n) const {
   int m = 0;
-  for (size_t i=0;i<servos.size() && m<n;i++) sensors[m++] = servos[i].get();
+  for (size_t i=0;i<servos.size() && m<n;i++) sensors[m++] = servos[i].getPos();
   return m;
 }
 

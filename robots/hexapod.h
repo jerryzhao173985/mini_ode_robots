@@ -23,13 +23,20 @@ namespace mor {
 
 class Hexapod : public OdeRobot {
 public:
+  // Leg index convention (used by tripodOf, the gait, and the sensor layout):
+  //          +X (front)
+  //        leg0 L | R leg1      even n -> Left (+Y), odd n -> Right (-Y)
+  //        leg2 L | R leg3      col = n/2 : 0 front, 1 mid, 2 back
+  //        leg4 L | R leg5      tripodOf(n) alternates -> two interleaved tripods
+  // Sensor layout: getSensors() = [lift,swing]x6 (intern, 12) then 6 foot contacts
+  // (attached ContactSensors, in leg order) = 18 channels. Motors = [lift,swing]x6 = 12.
   static const int NLEG = 6;
 
   explicit Hexapod(const OdeHandle& odeHandle, const std::string& name = "Hexapod");
 
-  int  getSensorNumberIntern() override { return 2*NLEG; }   // [lift,swing] angle per leg
-  int  getMotorNumberIntern()  override { return 2*NLEG; }   // [lift,swing] command per leg
-  int  getSensorsIntern(double* s, int n) override;
+  int  getSensorNumberIntern() const override { return 2*NLEG; }   // [lift,swing] angle per leg
+  int  getMotorNumberIntern()  const override { return 2*NLEG; }   // [lift,swing] command per leg
+  int  getSensorsIntern(double* s, int n) const override;
   void setMotorsIntern(const double* m, int n) override;
   void doInternalStuffIntern(GlobalData& g) override;        // drives the hip servos
   void placeIntern(const Pose& pose) override;

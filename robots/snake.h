@@ -25,9 +25,9 @@ class Snake : public OdeRobot {
 public:
   Snake(const OdeHandle& odeHandle, int numSegments = 6, const std::string& name = "Snake");
 
-  int  getSensorNumberIntern() override { return nSeg - 1; }
-  int  getMotorNumberIntern()  override { return nSeg - 1; }
-  int  getSensorsIntern(double* sensors, int n) override;
+  int  getSensorNumberIntern() const override { return nSeg - 1; }
+  int  getMotorNumberIntern()  const override { return nSeg - 1; }
+  int  getSensorsIntern(double* sensors, int n) const override;
   void setMotorsIntern(const double* motors, int n) override;
   void doInternalStuffIntern(GlobalData& g) override;
 

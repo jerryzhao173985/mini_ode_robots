@@ -48,6 +48,8 @@ public:
     for (int i=0;i<naxes && i<n;i++) target[i] = std::max(-1.0, std::min(1.0, m[i]));
   }
   void act(const GlobalData&) override {
+    if (dBodyID b = dJointGetBody(motor,0)) dBodyEnable(b);  // a sleeping body ignores the motor
+    if (dBodyID b = dJointGetBody(motor,1)) dBodyEnable(b);
     for (int i=0;i<naxes;i++) {
       dJointSetAMotorParam(motor, velParam(i),  target[i] * maxVel);
       dJointSetAMotorParam(motor, fmaxParam(i), power);

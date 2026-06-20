@@ -20,9 +20,9 @@ class Nimm4 : public OdeRobot {
 public:
   explicit Nimm4(const OdeHandle& odeHandle, const std::string& name = "Nimm4");
 
-  int  getSensorNumberIntern() override { return 2; }   ///< [left wheel rate, right wheel rate]
-  int  getMotorNumberIntern()  override { return 2; }   ///< [left drive, right drive] in [-1,1]
-  int  getSensorsIntern(double* sensors, int n) override;
+  int  getSensorNumberIntern() const override { return 2; }   ///< [left wheel rate, right wheel rate]
+  int  getMotorNumberIntern()  const override { return 2; }   ///< [left drive, right drive] in [-1,1]
+  int  getSensorsIntern(double* sensors, int n) const override;
   void setMotorsIntern(const double* motors, int n) override;
 
   void placeIntern(const Pose& pose) override;

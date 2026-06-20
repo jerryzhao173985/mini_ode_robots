@@ -23,13 +23,25 @@
 
 #include "joint.h"
 #include "pid.h"
-#include "motor.h"
 #include <algorithm>
 #include <cmath>
 
+// Design note: servos are VALUE TYPES owned directly by robots (std::vector<...>),
+// driven via the scalar set()/getPos() API — NOT polymorphic Motors. set() commands
+// AND applies in one call. (The attachable Motor path is for AngularMotor; see motor.h.)
+
 namespace mor {
 
-class OneAxisServo : public Motor {
+/// Wake both of a joint's bodies. A motor command does NOT auto-wake an ODE body that
+/// has gone to sleep (auto-disable), which would silently kill actuation; actuators call
+/// this so a commanded joint always moves regardless of the world's auto-disable setting.
+inline void wakeJointBodies(Joint* j){
+  if (!j) return;
+  if (dBodyID b1 = j->getPart1()->getBody()) dBodyEnable(b1);
+  if (dBodyID b2 = j->getPart2()->getBody()) dBodyEnable(b2);
+}
+
+class OneAxisServo {
 public:
   /** @param joint the hinge/slider to control
       @param min,max travel bounds (min should be <= 0 <= max)
@@ -48,6 +60,7 @@ public:
 
   /// set the target position, pos in [-1,1] mapped into [min,max]
   void set(double pos){
+    wakeJointBodies(joint);                              // a sleeping body ignores the motor
     pos = std::max(-1.0, std::min(1.0, pos));
     pos = (pos > 0) ? pos * max : pos * -min;
     pid.setTargetPosition(pos);
@@ -61,7 +74,7 @@ public:
   }
 
   /// current joint position scaled to [-1,1] (clamped; may exceed travel at limit stops)
-  double get() const {
+  double getPos() const {
     double p = joint->getPosition1();
     double s = (p > 0) ? ((max != 0) ? p / max : 0.0) : ((min != 0) ? p / -min : 0.0);
     return std::max(-1.0, std::min(1.0, s));
@@ -75,18 +88,12 @@ public:
   void setPower(double power) { pid.KP = power; }
   double getPower() const { return pid.KP; }
 
-  /* --- Motor interface (so a servo can be attached via OdeRobot::addMotor) --- */
-  int  getMotorNumber() const override { return 1; }
-  void set(const double* m, int n) override { if (n>0) target_ = m[0]; }
-  void act(const GlobalData&) override { set(target_); }   // applies via set(double) each step
-
 protected:
   OneAxisJoint* joint;
   double min, max;
   PID pid;
   double maxVel;
   double jointLimit;
-  double target_ = 0;
 };
 
 typedef OneAxisServo HingeServo;
@@ -106,7 +113,7 @@ typedef OneAxisServo SliderServo;
  * (lpzrobots routes this through a separate dAMotor; for a hinge/slider the joint's
  *  own motor is equivalent and simpler, so we use that.)
  */
-class OneAxisServoVel : public Motor {
+class OneAxisServoVel {
 public:
   OneAxisServoVel(OneAxisJoint* joint, double min, double max,
                   double power, double damp = 0.2, double maxVel = 20.0,
@@ -120,6 +127,7 @@ public:
 
   /// command target position, pos in [-1,1] mapped (centered) into [min,max]
   void set(double pos){
+    wakeJointBodies(joint);                              // a sleeping body ignores the motor
     pos = std::max(-1.0, std::min(1.0, pos));
     pos = (pos + 1) * (max - min) / 2 + min;            // centered scaling
     pid.setTargetPosition(pos);
@@ -130,24 +138,18 @@ public:
   }
 
   /// current position scaled to [-1,1] (inverse of the centered set() scaling, clamped)
-  double get() const {
+  double getPos() const {
     double s = 2.0 * (joint->getPosition1() - min) / (max - min) - 1.0;
     return std::max(-1.0, std::min(1.0, s));
   }
   void setPower(double p){ power = p; }
   double getPower() const { return power; }
 
-  /* --- Motor interface (so a servo can be attached via OdeRobot::addMotor) --- */
-  int  getMotorNumber() const override { return 1; }
-  void set(const double* m, int n) override { if (n>0) target_ = m[0]; }
-  void act(const GlobalData&) override { set(target_); }   // applies via set(double) each step
-
 protected:
   OneAxisJoint* joint;
   double min, max;
   PID    pid;
   double power, damp, jointLimit;
-  double target_ = 0;
 };
 
 typedef OneAxisServoVel HingeServoVel;
@@ -155,7 +157,7 @@ typedef OneAxisServoVel HingeServoVel;
 /** Velocity servo for a TWO-axis joint (UniversalJoint) — position control of both
  * axes via their implicit motors (dParamVel/Vel2 + FMax/FMax2). This is what a hexapod
  * hip needs (lift + swing), and what lpzrobots' TwoAxisServoVel provides. */
-class TwoAxisServoVel : public Motor {
+class TwoAxisServoVel {
 public:
   TwoAxisServoVel(TwoAxisJoint* joint, double min1, double max1, double min2, double max2,
                   double power, double maxVel = 12.0, double jointLimit = 1.3)
@@ -167,31 +169,27 @@ public:
     joint->setParam(dParamLoStop2, min2 - std::fabs(min2)*(jointLimit-1));
     joint->setParam(dParamHiStop2, max2 + std::fabs(max2)*(jointLimit-1));
   }
-  /// command both axes, each in [-1,1] (centered-scaled into [min,max])
+  /// command BOTH axes, each in [-1,1] (centered-scaled into [min,max]); applies this step
   void set(double p1, double p2){
-    t1 = std::max(-1.0,std::min(1.0,p1)); t2 = std::max(-1.0,std::min(1.0,p2));
-  }
-  double get1() const { return 2*(joint->getPosition1()-min1)/(max1-min1)-1; }
-  double get2() const { return 2*(joint->getPosition2()-min2)/(max2-min2)-1; }
-
-  /* --- Motor interface --- */
-  int  getMotorNumber() const override { return 2; }
-  void set(const double* m, int n) override { if(n>0) set(m[0], n>1?m[1]:t2); }
-  void act(const GlobalData&) override {
+    wakeJointBodies(joint);                              // a sleeping body ignores the motor
     double time = joint->odeHandle.getTime();
-    pid1.setTargetPosition((t1+1)*(max1-min1)/2+min1);
+    pid1.setTargetPosition((std::max(-1.0,std::min(1.0,p1))+1)*(max1-min1)/2+min1);
     joint->setParam(dParamVel,  pid1.stepVelocity(joint->getPosition1(), time));
     joint->setParam(dParamFMax, power);
-    pid2.setTargetPosition((t2+1)*(max2-min2)/2+min2);
+    pid2.setTargetPosition((std::max(-1.0,std::min(1.0,p2))+1)*(max2-min2)/2+min2);
     joint->setParam(dParamVel2,  pid2.stepVelocity(joint->getPosition2(), time));
     joint->setParam(dParamFMax2, power);
   }
+  double getPos1() const { return 2*(joint->getPosition1()-min1)/(max1-min1)-1; }
+  double getPos2() const { return 2*(joint->getPosition2()-min2)/(max2-min2)-1; }
+  void   setPower(double p){ power = p; }              // symmetry with the 1-axis servos
+  double getPower() const { return power; }
+
 private:
   TwoAxisJoint* joint;
   double min1,max1,min2,max2;
   PID pid1, pid2;
   double power;
-  double t1=0, t2=0;
 };
 
 } // namespace mor

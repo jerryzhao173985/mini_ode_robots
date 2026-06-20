@@ -352,23 +352,33 @@ written policy.
 
 ## 9b. The control & sensing layer (motors and sensors)
 
-A robot needs to *act* and *perceive*. lpzrobots layers two reusable elements on top of joints
-and geoms; the extraction keeps both, pure-ODE:
+A robot needs to *act* and *perceive*. The engine restores lpzrobots' composable I/O, pure-ODE.
 
-- **`OneAxisServo`** (`motors/oneaxisservo`) — *position control* for a hinge/slider. It runs a
-  **PID** on the joint angle and emits a torque via `joint->addForce1()`, with the joint's
-  limit-stops (`dParamLoStop/HiStop`) set from the travel bounds and a velocity clamp for
-  stability. `set(pos∈[-1,1])` commands a scaled target; the servo must be re-driven every step
-  (the PID acts each call). This is what the **Arm** uses to hold a pose against gravity.
-- **`RaySensor`** (`sensors/raysensor`) — *distance/IR sensing*. A `Ray` geom is rigidly mounted
-  on the body via a `Transform` and points along its local +Z. It piggybacks on the collision
-  pipeline: a per-`Substance` **callback** records each hit's `contact.geom.depth` and returns
-  `0` so **no contact joint is made** — the ray is a pure probe. `sense()` latches the nearest hit
-  per step. This single class exercises three engine features at once (Ray + Transform + the
-  Substance callback), and it's why those exist.
+**Robot I/O is aggregated.** `OdeRobot`'s public, **const** `getSensorNumber()/getSensors()` and
+`getMotorNumber()/setMotors()` combine the robot's own `*Intern` channels with any number of
+*attached* `Sensor`/`Motor` objects. A concrete robot implements the `*Intern` hooks **and/or**
+attaches sensors/motors via `addSensor`/`addMotor` (which take `std::unique_ptr` — ownership is
+explicit in the type; the robot frees them in `cleanup()`).
 
-The control loop a robot sees each step is therefore: `sense()` (read joints/rays) → controller →
-`doInternalStuff()` (drive servos / motors) → `Simulation::step()` (collide + integrate).
+**Actuators come in two kinds — distinguished by ownership, not capability:**
+- **Servos** (`servo.h`: `OneAxisServo`, `OneAxisServoVel`, `TwoAxisServoVel`) are **value types** a
+  robot holds directly (`std::vector<...>`) and drives via `set()` / `getPos()` in
+  `doInternalStuffIntern`. The velocity variants command a *target velocity* to the joint's implicit
+  motor (`dParamVel`) — unconditionally stable (no limit cycle); the force `OneAxisServo` is the
+  compliant PID-torque option. This is the common, lightweight joint case (Arm, Snake, Hexapod hips).
+- **Motors** (`motor.h`, attachable via `addMotor`) are **polymorphic**; the concrete one is
+  **`AngularMotor`** (ODE `dAMotor`) — it actively drives a *ball joint* or arbitrary 3-DOF axes,
+  which a servo on a single joint cannot.
+
+**Sensors** all implement the attachable `Sensor` interface (`sense()` latches, `get()` copies out):
+`RaySensor` (distance — a `Ray` + `Transform` + a `Substance` callback that records `contact.depth`
+and returns `0` so no contact joint forms), `JointSensor`/`ForceTorqueSensor` (proprioception &
+joint load), `SpeedSensor`/`AxisOrientationSensor` (velocity & up-vector for balance), `ContactSensor`
+(foot–ground touch).
+
+The per-step loop a robot sees: `sense()` (latch attached sensors + `senseIntern`) → controller
+reads `getSensors()`, writes `setMotors()` → `doInternalStuff()` (attached motors `act()` +
+`doInternalStuffIntern` drives servos) → `Simulation::step()` (collide + integrate).
 
 ## 10. What we keep vs. drop in the extraction
 

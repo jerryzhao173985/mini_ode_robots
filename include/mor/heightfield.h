@@ -40,7 +40,11 @@ public:
       heightFn(std::move(heightFn)), minH(minH), maxH(maxH) {}
 
   ~HeightField() override {
-    // destroy the geom FIRST, then the data it referenced (lifecycle requirement)
+    // destroy the geom FIRST, then the data it referenced (lifecycle requirement).
+    // The odeIsAlive() guard is for crash-safety: if ODE is already closed (the
+    // unsupported "Simulation::close() before this dtor" order) the data buffer leaks
+    // — like any Primitive's geom under the engine's dSpaceSetCleanup(space,0) design.
+    // Destroy HeightField (and all Primitives) BEFORE Simulation::close().
     if (odeIsAlive()){
       if (geom){ dGeomDestroy(geom); geom = 0; }   // geom=0 so the base dtor skips it
       if (data){ dGeomHeightfieldDataDestroy(data); data = 0; }
@@ -50,7 +54,7 @@ public:
   /// world (x,y) -> terrain height (use to place bodies ON the terrain)
   double heightAt(double x, double y) const { return heightFn(x, y); }
 
-  void init(const OdeHandle& h, double /*mass*/, char /*mode*/ = Geom) override {
+  void init(const OdeHandle& h, double /*mass*/ = 0, char /*mode*/ = Geom) override {  // terrain is massless/static
     if (!substanceManuallySet) substance = h.substance;
     mode = Geom;                                   // terrain is always static collision geometry
     data = dGeomHeightfieldDataCreate();

@@ -56,7 +56,7 @@ robots/     Nimm4 (wheeled), Arm (servo chain), Snake (anisotropic friction), He
   ODE↔matrix bridge is correct — validated by round-tripping a pose through ODE itself.
 
 ## What is proven (not just "it ran")
-Every claim is asserted by a headless self-checking test (`make test`, 7 suites, also CMake/`ctest`):
+Every claim is asserted by a headless self-checking test (`make test`, 9 suites, also CMake/`ctest`):
 - math conventions round-trip exactly through ODE; energy dissipates (never grows); hinge/universal/
   ball/slider constraints hold; stacks are stable; no NaN over long runs.
 - single-shape inertia tensors match closed form to machine precision; Coulomb friction slips at
@@ -68,6 +68,6 @@ Every claim is asserted by a headless self-checking test (`make test`, 7 suites,
 
 ## Status & intentionally out of scope
 Complete and verified as a foundation. Out of scope by choice (to stay small): rendering, a controller
-class hierarchy (`Simulation::run` takes a `std::function`), trimesh/heightfield geoms, a separate
+class hierarchy (`Simulation::run` takes a `std::function`), trimesh geoms (heightfield IS supported), a separate
 `AMotor` wrapper (the velocity servo uses the joint's built-in motor), and the lpzrobots learning
 controllers (`selforg`).

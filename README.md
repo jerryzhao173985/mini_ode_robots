@@ -22,7 +22,7 @@ model, the collision/step loop, the robot base class — and **drops everything 
 Requires a C++17 compiler and ODE (`brew install ode`; `ode-config` on PATH).
 
 ```sh
-make            # builds build/libmor.a + the six example binaries
+make            # builds build/libmor.a + the nine example binaries
 make test       # builds and runs the headless verification suite
 ```
 
@@ -32,7 +32,7 @@ Or with CMake (portable; finds ODE via pkg-config or ode-config):
 cmake -S . -B build && cmake --build build && ctest --test-dir build
 ```
 
-Six headless, self-checking programs (no window, no GPU):
+Nine headless, self-checking programs (no window, no GPU):
 
 | binary | what it proves |
 |---|---|
@@ -97,12 +97,21 @@ extension guide (construction recipe, servos, composable sensors/motors, gotchas
 | `joint.{h,cpp}` | `osg/joint.{h,cpp}` | visuals removed; same `dJointCreate*` calls |
 | `simulation.{h,cpp}` | `simulation.cpp` (`odeStep`, `nearCallback`) | GUI/threading/rendering removed |
 | `oderobot.{h,cpp}` | `robots/oderobot.{h,cpp}` | `AbstractRobot`/`Storeable`/Sensor-Motor system simplified |
-| `pid.h` / `servo.h` | `motors/pid.*`, `motors/oneaxisservo.*` | PID + OneAxisServo (force/torque variant), self-contained |
+| `pid.h` / `servo.h` | `motors/pid.*`, `motors/oneaxisservo.*`, `twoaxisservo.*` | PID + OneAxisServo(Vel) + TwoAxisServoVel |
+| `sensor.h` / `motor.h` | `sensors/sensor.h`, `motors/motor.h` | attachable I/O interfaces (slimmed; no two-phase init) |
 | `raysensor.{h,cpp}` | `sensors/raysensor.*` | distance sensor; visuals removed |
+| `jointsensor.h` | `sensors/*` (concept) | JointSensor (angle/rate) + ForceTorqueSensor (joint feedback) |
+| `bodysensors.h` | `sensors/speedsensor.*`, `axisorientationsensor.*` | SpeedSensor + AxisOrientationSensor |
+| `contactsensor.h` | `sensors/contactsensor.*` | binary touch via a Substance callback |
+| `angularmotor.h` | `motors/angularmotor.*` | ODE dAMotor: active ball-joint / 3-DOF control |
 | `obstacles.h` | `obstacles/playground.h`, `passivebox.h`, `passivesphere.h` | minimal static walls + passive bodies |
+| `heightfield.h` | `obstacles/terrainground.*` + ODE skill | `dCreateHeightfield` rough terrain (static primitive) |
+| `logger.h` | (new — cf. `guilogger`) | minimal header-only CSV trajectory logger |
+| `mor.h` | (new) | umbrella header — the single front door |
 | `robots/nimm4.*` | `robots/nimm2.*` (in spirit) | clean 4-wheel differential drive |
 | `robots/arm.*` | `robots/arm*.*` (in spirit) | servo-controlled hinge chain |
 | `robots/snake.*` | `robots/schlange*.*` (in spirit) | anisotropic-friction undulating snake |
+| `robots/hexapod.*` | `robots/hexapod.*` | trunk + 6 two-DOF-hip legs + foot contacts; tripod gait |
 
 ---
 

@@ -78,13 +78,17 @@ void Simulation::nearCallback(void* data, dGeomID o1, dGeomID o2){
   Primitive* p2 = (Primitive*)dGeomGetData(o2);
   if (!p1 || !p2) return;                              // not one of ours
 
-  const int N = 80;
+  const int N = 128;
   dContact contact[N];                                 // an ARRAY (skill rule #4)
-  // N=80 is generous: every framework primitive pair yields <=4 contacts (box-box=4,
-  // sphere-plane=1). Only a trimesh/heightfield could saturate it — none are exposed yet;
-  // if one is added, warn on `n==N` (silent truncation would read as "all contacts handled").
+  // Primitive pairs yield <=4 contacts; a HeightField/TriMesh pair can produce many, so N
+  // is sized with headroom and saturation is reported (silent truncation would read as
+  // "all contacts handled" — the canonical heightfield bug).
   int n = dCollide(o1, o2, N, &contact[0].geom, sizeof(dContact));
   if (n <= 0) return;
+  if (n == N){
+    static bool warned = false;
+    if (!warned){ std::fprintf(stderr, "mor: contact array saturated at %d (raise N for dense terrain)\n", N); warned = true; }
+  }
 
   const Substance& s1 = p1->substance;
   const Substance& s2 = p2->substance;

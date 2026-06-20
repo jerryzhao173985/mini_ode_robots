@@ -1,9 +1,14 @@
 /* mini_ode_robots — umbrella header.
  *
- * The single front door: `#include "mor/mor.h"` pulls in the whole engine (math,
- * physics core, joints, sensors/motors, scene objects, simulation, robot base).
- * Prefer this in applications; the individual headers remain available if you want
- * a minimal include set. Everything lives in namespace `mor`.
+ * The single front door to the ENGINE: `#include "mor/mor.h"` pulls in the whole
+ * engine (math, physics core, joints, sensors/motors, scene objects, simulation, and
+ * the OdeRobot base). Prefer this in applications; the individual headers remain
+ * available for a minimal include set. Everything lives in namespace `mor`.
+ *
+ * NOTE: the concrete robot SUITE (Hexapod/Arm/Snake/Nimm4) is a layer built ON the
+ * engine and lives under robots/, not here — include it separately, e.g.
+ *   #include "hexapod.h"      // build with -Irobots (see the Makefile/CMakeLists)
+ * This keeps the engine front door independent of the example robots.
  */
 #ifndef MOR_MOR_H
 #define MOR_MOR_H

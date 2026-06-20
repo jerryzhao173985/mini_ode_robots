@@ -21,17 +21,17 @@ void OdeRobot::cleanup(){
 }
 
 /* ---- controller I/O: robot's own (*Intern) channels, then attached sensors/motors ---- */
-int OdeRobot::getSensorNumber(){
+int OdeRobot::getSensorNumber() const {
   int n = getSensorNumberIntern();
   for (Sensor* s : attachedSensors) n += s->getSensorNumber();
   return n;
 }
-int OdeRobot::getMotorNumber(){
+int OdeRobot::getMotorNumber() const {
   int n = getMotorNumberIntern();
   for (Motor* m : attachedMotors) n += m->getMotorNumber();
   return n;
 }
-int OdeRobot::getSensors(double* sensors, int n){
+int OdeRobot::getSensors(double* sensors, int n) const {
   int w = getSensorsIntern(sensors, n);
   for (Sensor* s : attachedSensors){
     if (w >= n) break;
@@ -56,8 +56,12 @@ void OdeRobot::doInternalStuff(GlobalData& g){
   for (Motor* m : attachedMotors) m->act(g);
   doInternalStuffIntern(g);
 }
-void OdeRobot::addSensor(Sensor* s){ attachedSensors.push_back(s); }
-void OdeRobot::addMotor(Motor* m){ attachedMotors.push_back(m); }
+Sensor* OdeRobot::addSensor(std::unique_ptr<Sensor> s){
+  Sensor* p = s.get(); attachedSensors.push_back(s.release()); return p;
+}
+Motor* OdeRobot::addMotor(std::unique_ptr<Motor> m){
+  Motor* p = m.get(); attachedMotors.push_back(m.release()); return p;
+}
 
 void OdeRobot::place(const Pos& pos){ place(Pose::translate(pos)); }
 void OdeRobot::place(const Pose& pose){

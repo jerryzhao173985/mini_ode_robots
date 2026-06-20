@@ -1,7 +1,8 @@
 # Building a new robot on mini_ode_robots
 
-This is the practical "how to extend" guide. Read `MENTAL_MODEL.md` first for the *why*;
-this shows the *how*, grounded in the real classes. A robot here is just:
+Everything lives in **namespace `mor`**, and **`#include "mor/mor.h"`** pulls in the whole engine
+(individual headers also work). This is the practical "how to extend" guide. Read `MENTAL_MODEL.md`
+first for the *why*; this shows the *how*, grounded in the real classes. A robot here is just:
 
 > **a bag of `Primitive`s (rigid parts) + `Joint`s (how they connect) + an I/O interface
 > (`getSensors`/`setMotors`) the controller talks to.**
@@ -70,9 +71,9 @@ Hinge motors can also be driven raw: `hinge->setParam(dParamVel, v); hinge->setP
 **Option A — override the `*Intern` hooks** (best when the robot has fixed channels):
 
 ```cpp
-int  getSensorNumberIntern() override { return nJoints; }
-int  getMotorNumberIntern()  override { return nJoints; }
-int  getSensorsIntern(double* s, int n) override { /* write joint angles */ return k; }
+int  getSensorNumberIntern() const override { return nJoints; }   // read-only hooks are const
+int  getMotorNumberIntern()  const override { return nJoints; }
+int  getSensorsIntern(double* s, int n) const override { /* write joint angles */ return k; }
 void setMotorsIntern(const double* m, int n) override { /* store targets */ }
 void doInternalStuffIntern(GlobalData&) override { /* drive servos */ }
 ```
@@ -84,19 +85,23 @@ void doInternalStuffIntern(GlobalData&) override { /* drive servos */ }
 RaySensor* eye = new RaySensor(5.0);
 eye->init(odeHandle, getMainPrimitive(), Pose::rotate(Vec3(0,0,1), Vec3(1,0,0)));
 addSensor(eye);                                   // appends 1 distance channel
-addSensor(new JointSensor(hj, /*withRate=*/true));// appends [angle, rate]
-addMotor (new OneAxisServoVel(hj, -1,1, 20));     // appends 1 command channel
+addSensor(new JointSensor(hj, true));             // appends [angle, rate]
+addMotor (new AngularMotor(odeHandle, partA, partB, {Axis(0,0,1)}, 10)); // appends 1 command channel
+// NB: servos (OneAxisServoVel/TwoAxisServoVel) are NOT Motors — they are value members you
+//     drive in doInternalStuffIntern (Option A). AngularMotor is the attachable Motor.
 ```
 
 Both compose: a robot can have `*Intern` channels *and* attached sensors/motors;
 `getSensorNumber()` is the sum. See `examples/demo_sensors.cpp`.
 
-Ready-made parts to attach:
-- Sensors: `RaySensor` (distance), `JointSensor` (angle/rate), `ForceTorqueSensor` (joint load),
-  `SpeedSensor` (velocity), `AxisOrientationSensor` (up-vector/tilt — balance), `ContactSensor` (touch).
-- Motors: `OneAxisServoVel`/`OneAxisServo` (1-DOF joint), `TwoAxisServoVel` (2-DOF universal joint,
-  e.g. a hexapod hip), `AngularMotor` (ODE `dAMotor`: actively drive a ball joint or 3-DOF Euler axes
-  — what the built-in joint motors can't do).
+Ready-made parts:
+- Attachable **sensors** (via `addSensor`): `RaySensor` (distance), `JointSensor` (angle/rate),
+  `ForceTorqueSensor` (joint load), `SpeedSensor` (velocity), `AxisOrientationSensor` (up-vector/tilt
+  — balance), `ContactSensor` (touch).
+- Attachable **motor** (via `addMotor`): `AngularMotor` (ODE `dAMotor`: actively drive a ball joint
+  or 3-DOF Euler axes — what the built-in joint motors can't do).
+- **Joint servos** — NOT attached; held as value members and driven in `doInternalStuffIntern`:
+  `OneAxisServo`/`OneAxisServoVel` (1-DOF), `TwoAxisServoVel` (2-DOF universal hip).
 
 ---
 
@@ -146,9 +151,9 @@ A 1-DOF powered pendulum (`pendulum.*` is left as an exercise; this is the whole
 class Pendulum : public OdeRobot {
 public:
   Pendulum(const OdeHandle& h) : OdeRobot(h, "Pendulum") {}
-  int  getMotorNumberIntern()  override { return 1; }
-  int  getSensorNumberIntern() override { return 1; }
-  int  getSensorsIntern(double* s, int n) override { if(n>0){ s[0]=servo->get(); return 1;} return 0; }
+  int  getMotorNumberIntern()  const override { return 1; }
+  int  getSensorNumberIntern() const override { return 1; }
+  int  getSensorsIntern(double* s, int n) const override { if(n>0){ s[0]=servo->getPos(); return 1;} return 0; }
   void setMotorsIntern(const double* m, int n) override { if(n>0) target = m[0]; }
   void doInternalStuffIntern(GlobalData&) override { servo->set(target); }
   void placeIntern(const Pose& pose) override {
@@ -158,12 +163,11 @@ public:
     arm->setPose(Pose::rotate(Vec3(0,0,1),Vec3(1,0,0)) * Pose::translate(0.25,0,0) * pose);
     dBodySetAutoDisableFlag(arm->getBody(),0); objects.push_back(arm);
     HingeJoint* hj = new HingeJoint(arm, base, Vec3(0,0,0)*pose, Axis(0,1,0)*pose);
-    hj->init(odeHandle);
-    servo = new OneAxisServoVel(hj, -3.14, 3.14, 20); joints.push_back(hj);
+    hj->init(odeHandle); joints.push_back(hj);                 // OdeRobot::cleanup() frees joints+primitives
+    servo = std::make_unique<OneAxisServoVel>(hj, -3.14, 3.14, 20);  // owned member, no manual delete
   }
-  ~Pendulum() override { /* servo owned here; OdeRobot::cleanup frees joints/primitives */ delete servo; }
 private:
-  OneAxisServoVel* servo = nullptr; double target = 0;
+  std::unique_ptr<OneAxisServoVel> servo;  double target = 0;  // (Arm/Snake use std::vector<...> for many)
 };
 ```
 
